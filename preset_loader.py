@@ -11,11 +11,24 @@ from aiohttp import web
 from PIL import Image
 import server
 
+from . import id_resolver
+
 # pre-define important paths
 BASE_DIR     = Path(__file__).resolve().parent
 DATA_DIR     = BASE_DIR / "data"
 PREVIEWS_DIR = DATA_DIR / "previews"
-JSON_PATH    = DATA_DIR / "presets.json"
+
+# Two files, deliberately.
+#
+#   presets.json       shipped with the repo, tracked by git, never written to
+#                      at runtime. It is only ever a seed.
+#   user_presets.json  the live file everything reads and writes. Gitignored,
+#                      so `git pull` and even `git reset --hard` cannot touch it.
+#
+# Keeping user data in a git-tracked file meant an update either refused to
+# merge or silently wiped everyone's presets. This split removes that entirely.
+DEFAULTS_PATH = DATA_DIR / "presets.json"
+JSON_PATH     = DATA_DIR / "user_presets.json"
 BROWSE_HTML  = BASE_DIR / "web" / "browse.html"  # standalone mobile editor page
 
 _write_lock = asyncio.Lock()
@@ -26,6 +39,14 @@ _revision = 0
 DATA_DIR.mkdir(exist_ok=True)
 PREVIEWS_DIR.mkdir(exist_ok=True)
 
+# First run on this install: seed the live file.
+# If presets.json is present — which it is for anyone who installed via git —
+# we copy it across, so an existing user's presets carry over untouched.
+if not JSON_PATH.exists() and DEFAULTS_PATH.exists():
+    shutil.copy2(DEFAULTS_PATH, JSON_PATH)
+
+# Only if there is no seed at all (someone deleted data/) do we fall back to
+# writing the built-in starter set.
 if not JSON_PATH.exists():
     starter = {
         "Flux/Styles/oil_painting_aivazovsky": {
@@ -133,10 +154,15 @@ routes = server.PromptServer.instance.routes
 async def list_presets(request):
     """
     GET /preset_loader/list
-    Returns the full presets.json as JSON.
-    The JS calls this on node load to populate the dropdown.
+    Returns the full presets.json as JSON, plus each preset's derived ID path
+    so the UI can show the numbers the preset_id input uses. IDs are computed
+    from the keys on the fly and never written to disk.
     """
     presets = load_presets()
+    paths   = id_resolver.id_paths(presets)
+    for key, entry in presets.items():
+        if isinstance(entry, dict):
+            entry["id_path"] = paths.get(key, [])
     return web.json_response(presets)
 
 
@@ -520,6 +546,21 @@ class PresetLoaderNode:
                     "tooltip": "Pick a preset. Used only when the text box is empty — anything typed in the text box overrides it.",
                 }),
             },
+            "optional": {
+                # forceInput makes these connection sockets rather than widgets,
+                # which matters: ComfyUI puts every *widget* value into the node's
+                # cache signature, so a seed widget set to randomize would re-run
+                # this node — and everything downstream — on every queue even when
+                # preset_id is unused. As sockets they only exist once wired.
+                "preset_id": ("STRING", {
+                    "forceInput": True,
+                    "tooltip": "Pick a preset by number, e.g. 1,2,1 — see the README for the range and choice syntax.",
+                }),
+                "seed": ("INT", {
+                    "forceInput": True,
+                    "tooltip": "Drives random picks in preset_id. The same seed always gives the same preset.",
+                }),
+            },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
             }
@@ -531,7 +572,15 @@ class PresetLoaderNode:
     CATEGORY     = "utils/presets"
 
     @classmethod
-    def _resolve_output(cls, preset, text):
+    def _resolve_key(cls, preset_id, seed):
+        # Turn a preset_id spec ("1,2,1", "1,1,[3:8]", ...) into a preset key.
+        # None when nothing is wired or the spec resolves to nothing.
+        if not preset_id or not str(preset_id).strip():
+            return None
+        return id_resolver.resolve(load_presets(), str(preset_id), seed or 0)
+
+    @classmethod
+    def _resolve_output(cls, preset, text, preset_id=None, seed=0):
         # The exact string this node outputs for the given inputs. Shared by
         # execute() and IS_CHANGED() so the cache fingerprint tracks precisely
         # the current prompt and nothing else.
@@ -544,6 +593,15 @@ class PresetLoaderNode:
         #
         # On desktop the DOM UI copies the chosen preset into the (editable) text
         # box, so `text` is non-empty there and is used unchanged.
+        #
+        # A wired preset_id outranks both. Connecting a socket is deliberate in a
+        # way that leftover text in a box is not, so it wins when present.
+        key = cls._resolve_key(preset_id, seed)
+        if key:
+            entry = load_presets().get(key)
+            if entry and entry.get("text"):
+                return entry["text"]
+
         if text and text.strip():
             return text
         if preset and preset != cls.NONE_CHOICE:
@@ -553,15 +611,37 @@ class PresetLoaderNode:
         return text
 
     @classmethod
-    def IS_CHANGED(cls, preset=None, text="", unique_id=None):
+    def IS_CHANGED(cls, preset=None, text="", preset_id=None, seed=0, **kwargs):
         # ComfyUI caches a node's output keyed on its input widget values. When a
         # preset is used as-is (empty text box, e.g. from the mobile frontend),
         # the selected key stays the same even after the preset is edited on disk,
         # so ComfyUI would serve a stale cached result. Return a fingerprint of
         # the resolved current prompt — the very string execute() produces — so
         # the cache is invalidated only when that output actually changes.
-        output = cls._resolve_output(preset, text)
+        #
+        # **kwargs is load-bearing: ComfyUI passes hidden inputs here, and if this
+        # signature rejects them the call raises and the node silently falls back
+        # to being cached.
+        #
+        # preset_id and seed arrive as None/0 even when wired — ComfyUI resolves
+        # IS_CHANGED without upstream outputs, so linked inputs are invisible here.
+        # That is fine: a linked input reaches the cache key through its upstream
+        # node's own signature, so changing the seed upstream still invalidates us.
+        output = cls._resolve_output(preset, text, preset_id, seed)
         return hashlib.sha256(output.encode("utf-8")).hexdigest()
 
-    def execute(self, preset=None, text="", unique_id=None):
-        return (self._resolve_output(preset, text),)
+    def execute(self, preset=None, text="", preset_id=None, seed=0, unique_id=None):
+        # Tell the frontend which preset a wired preset_id landed on so the node
+        # can show it. Execution cannot write into widgets, so this goes over
+        # ComfyUI's websocket and the JS applies it.
+        key = self._resolve_key(preset_id, seed)
+        if key:
+            try:
+                server.PromptServer.instance.send_sync("preset_loader.resolved", {
+                    "node_id": unique_id,
+                    "key":     key,
+                })
+            except Exception:
+                pass  # a UI update must never break execution
+
+        return (self._resolve_output(preset, text, preset_id, seed),)

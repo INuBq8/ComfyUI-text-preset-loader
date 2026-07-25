@@ -3,6 +3,7 @@
 // =============================================================================
 
 import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 
 // =============================================================================
 // CONSTANTS
@@ -558,8 +559,17 @@ function showCategoryDropdown(anchor, presets, currentKey, onSelect, showPreview
             border-radius:8px;background:${key === currentKey ? COLOR_ACCENT + "16" : "transparent"};padding:8px 9px;
             color:#d8dbe3;text-align:left;cursor:pointer;margin-bottom:3px;`;
         const title = document.createElement("div");
-        title.textContent = name;
         title.style.cssText = "font-size:11px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+        // The dotted ID path is exactly what you'd type into the preset_id input.
+        const idPath = (preset.id_path || []).join(".");
+        if (idPath) {
+            const chip = document.createElement("span");
+            chip.textContent = idPath;
+            chip.style.cssText = "margin-right:7px;color:#6f7583;font-size:10px;font-variant-numeric:tabular-nums;";
+            title.append(chip, document.createTextNode(name));
+        } else {
+            title.textContent = name;
+        }
         const meta = document.createElement("div");
         meta.textContent = parts.join(" / ") || "Uncategorised";
         meta.style.cssText = "font-size:9px;color:#747b89;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
@@ -1214,9 +1224,42 @@ app.registerExtension({
             node.setDirtyCanvas(true, true);
         });
 
+        // ── ID INPUT SYNC ────────────────────────────────────────────────────
+        // execute() can't write into widgets, so the backend pushes the resolved
+        // preset over the websocket and we apply it here. This is what makes the
+        // text box, the label and the preview follow the preset_id input.
+        // ────────────────────────────────────────────────────────────────────
+        function applyResolved(key) {
+            selectedKey      = key;
+            lastLoadedText   = presets[key].text || "";
+            textWidget.value = lastLoadedText;   // matched, so no stale dirty dot
+            persistKey();
+            updateLabel();
+            updatePreview();
+            node.setDirtyCanvas(true, true);
+        }
+
+        const onResolved = (event) => {
+            const data = event.detail || {};
+            if (String(data.node_id) !== String(node.id)) return;
+            if (!data.key) return;
+
+            if (presets[data.key]) {
+                applyResolved(data.key);
+            } else {
+                // Local list is stale (preset added since this node loaded)
+                fetchPresets().then(p => {
+                    presets = p;
+                    if (presets[data.key]) applyResolved(data.key);
+                });
+            }
+        };
+        api.addEventListener("preset_loader.resolved", onResolved);
+
         const originalRemoved = node.onRemoved;
         node.onRemoved = function () {
             unsubscribeChanges();
+            api.removeEventListener("preset_loader.resolved", onResolved);
             for (const observer of themeObservers) observer.disconnect();
             textWidgetEl?.removeEventListener("input", onTextEdited);
             document.getElementById("pl-dropdown")?.remove();
