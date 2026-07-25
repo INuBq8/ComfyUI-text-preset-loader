@@ -9,6 +9,11 @@ while using comfyui I found my self switching between group of texts either for 
 - optional preview image for each preset
 - Tree structure for presets to organize them in categories and subcategories
 - search function to quickly find presets by name
+- Responsive browser library at `/preset_loader/browse`
+- Category navigation, breadcrumbs, pinned presets and recent presets
+- Live synchronization between the browser library and canvas nodes
+- Safe atomic JSON updates, rename/move, and save-copy support
+- Responsive preset editor with preview upload and draft protection
 
 ## Usage
 1. load Preset Loader Node from Node library
@@ -18,6 +23,29 @@ while using comfyui I found my self switching between group of texts either for 
 5. the new preset will be added to the drop-down menu and can be loaded like the other presets.
 6. you can also delete presets by clicking the delete button on the node.
 7. you can save preview image for the preset by clicking the save image button and selecting an image file.
+
+## Browser library
+
+Open `http://localhost:8188/preset_loader/browse` (replace the host and port if
+needed) to manage presets in a full-page interface. The library supports desktop
+and mobile layouts, category browsing, search, pinned and recent presets,
+preview images, rename/move, and live updates to open ComfyUI nodes.
+
+Preset names use `/` as a category separator, for example:
+
+```text
+Characters/Heroes/example
+Camera/Portrait/close_up
+```
+
+## Editing behavior
+
+- **Update** overwrites the currently selected preset and is enabled only when
+  its text has changed.
+- **Save copy** creates a new preset from the current text and preserves the
+  selected preset's preview image.
+- Rename/move, pin/unpin, and delete are available from the node's actions menu.
+- Browser edits and pin changes are propagated to open nodes without reloading.
 
 ## usage in workflow
 1. connect the output of the Preset Loader Node to the input of a Text concatenate Node.
