@@ -14,6 +14,7 @@ while using comfyui I found my self switching between group of texts either for 
 - Live synchronization between the browser library and canvas nodes
 - Safe atomic JSON updates, rename/move, and save-copy support
 - Responsive preset editor with preview upload and draft protection
+- Pick presets by ID from a workflow input, with random and range selection
 
 ## Usage
 1. load Preset Loader Node from Node library
@@ -38,6 +39,40 @@ Characters/Heroes/example
 Camera/Portrait/close_up
 ```
 
+## Picking presets by ID
+
+Every preset has a positional ID at each level of the tree, shown next to its
+name in the browser. Read them down the tree — the first group is `1`, the
+first preset inside it is `1`, and so on — so `1,2,1` means group 1, subgroup 2,
+preset 1.
+
+The node has two optional inputs for this (connect a node to use them; leave
+them unwired and the node behaves normally):
+
+- **preset_id** — a string that selects a preset by its numbers.
+- **seed** — drives the random forms below. The same seed always resolves to
+  the same preset, so a result you like is reproducible. Wire an Int node set to
+  `randomize` to pick a different preset each run.
+
+`preset_id` overrides the dropdown and the text box when it is connected.
+
+| input | picks |
+| --- | --- |
+| `1,2,1` | group 1, subgroup 2, preset 1 |
+| `1,2` | first preset under group 1, subgroup 2 (unspecified levels take the first) |
+| `1,,3` | an empty level also takes the first entry |
+| `1,1,[3:8]` | a random preset with an ID from 3 to 8 |
+| `1,1,[1:-1]` | any preset at that level (`-1` means the last one) |
+| `1,1,[1,4,6]` | a random pick from that list |
+
+If a number doesn't exist it falls back to the first entry at that level rather
+than failing, and ranges are trimmed to what actually exists, so `[3:99]` with
+7 presets picks between 3 and 7.
+
+**Note:** IDs are positional. Adding or deleting a preset shifts the numbers of
+the ones after it in the same group, so a workflow that hardcodes an ID may
+point at a different preset later. This suits sorting and random picking rather
+than a permanent address for one specific preset.
 ## Editing behavior
 
 - **Update** overwrites the currently selected preset and is enabled only when
