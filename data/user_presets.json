@@ -1,0 +1,40 @@
+{
+  "Flux/Styles/oil_painting_aivazovsky": {
+    "text": "Oil on canvas painting in the style of Ivan Aivazovsky, characteristic thick brushstrokes and rich texture, deep navy and grey tones with golden highlights.",
+    "preview": "Flux_Styles_oil_painting_aivazovsky.jpg",
+    "preview_version": 1
+  },
+  "Flux/Styles/post_impressionism_vangogh": {
+    "text": "Post-impressionism painting in the style of Vincent Van Gogh, swirling expressive brushstrokes, bold impasto texture, vivid contrasting colors.",
+    "preview": "Flux_Styles_post_impressionism_vangogh.jpg",
+    "preview_version": 1
+  },
+  "Flux/Styles/frank_frazetta": {
+    "text": "Frank Frazetta fantasy illustration style, bold expressive brushstrokes, vivid dramatic colors.",
+    "preview": "Flux_Styles_frank_frazetta.jpg",
+    "preview_version": 1
+  },
+  "Flux/Styles/edvard_munch_scream": {
+    "text": "Oil painting in the style of Edvard Munch's The Scream, expressionist style, muted warm and cold contrast, thick visible brushstrokes.",
+    "preview": "Flux_Styles_edvard_munch_scream.jpg",
+    "preview_version": 1,
+    "last_used_at": "2026-07-25T23:34:07+00:00"
+  },
+  "Flux/Styles/jack_kirby_comics": {
+    "text": "Comic art in the style of Jack Kirby, vibrant bold colors, iconic Kirby krackle energy effects, thick outlines, retro superhero aesthetic, dramatic perspective, flat cel-shaded coloring.",
+    "preview": "Flux_Styles_jack_kirby_comics.jpg",
+    "preview_version": 1,
+    "last_used_at": "2026-07-25T23:42:36+00:00"
+  },
+  "Flux/Styles/ukiyo_e": {
+    "text": "Ukiyo-e woodblock print style, bold black outlines, flat perspective, vibrant traditional colors, dynamic diagonal composition, asymmetrical arrangements, sense of movement and energy, decorative graphic elements, traditional Japanese aesthetic.",
+    "preview": "Flux_Styles_ukiyo_e.jpg",
+    "preview_version": 1
+  },
+  "Flux/Styles/alphonse_mucha_artnouveau": {
+    "text": "Alphonse Mucha Art Nouveau style, flowing organic curvilinear lines, muted earthy pastel color palette, subtle watercolor-like textures, ornate decorative elements, intricate fine details, elegant poster composition, natural forms and curves, warm tactile feel.",
+    "preview": "Flux_Styles_alphonse_mucha_artnouveau.jpg",
+    "preview_version": 1,
+    "last_used_at": "2026-07-25T23:16:37+00:00"
+  }
+}
