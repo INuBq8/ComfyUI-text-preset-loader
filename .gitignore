@@ -1,23 +1,5 @@
-# The live preset file. Never tracked — this is user data, and letting git own
-# it means an update can refuse to merge or wipe it.
-data/user_presets.json
-
-# Interrupted atomic writes
-data/presets-*.tmp
-
-# Preview images. The starter images below ship with the repo; everything a
-# user adds themselves stays local.
-data/previews/*
-!data/previews/.gitkeep
-!data/previews/Flux_Styles_oil_painting_aivazovsky.jpg
-!data/previews/Flux_Styles_post_impressionism_vangogh.jpg
-!data/previews/Flux_Styles_frank_frazetta.jpg
-!data/previews/Flux_Styles_edvard_munch_scream.jpg
-!data/previews/Flux_Styles_jack_kirby_comics.jpg
-!data/previews/Flux_Styles_ukiyo_e.jpg
-!data/previews/Flux_Styles_alphonse_mucha_artnouveau.jpg
-
 __pycache__/
 *.pyc
 node.zip"data/presets.json" 
 /.idea
+data/presets.json
