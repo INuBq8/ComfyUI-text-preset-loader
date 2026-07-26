@@ -104,3 +104,9 @@ than a permanent address for one specific preset.
 
 ## acknowledgements
 - Claude Sonnet 4.6 from Anthropic.
+- Huge thanks to [@Samseys](https://github.com/INuBq8/ComfyUI-text-preset-loader/pull/1)
+  for an amazing contribution — the responsive preset browser, the in-node
+  browser with categories and search, per-node preview controls, multi-frontend
+  support with the `/preset_loader/browse` manager, live synchronization between
+  the browser and open nodes, and the atomic, lock-protected JSON writes that
+  make it all safe. This release is built on that work.
