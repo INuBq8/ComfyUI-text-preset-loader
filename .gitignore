@@ -3,3 +3,4 @@ __pycache__/
 node.zip"data/presets.json" 
 /.idea
 data/presets.json
+data/user_presets.json
