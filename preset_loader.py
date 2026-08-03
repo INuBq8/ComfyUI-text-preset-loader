@@ -80,6 +80,28 @@ if not JSON_PATH.exists():
     }
     JSON_PATH.write_text(json.dumps(starter, indent=2))
 
+
+def _migrate_schema() -> None:
+    """
+    Backfill fields added after a user's presets.json was first created, so an
+    update never leaves older entries without keys the UI now expects.
+    Runs once at import time; only touches disk if something was missing.
+    """
+    try:
+        data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return
+
+    changed = False
+    for entry in data.values():
+        if isinstance(entry, dict) and "favorite" not in entry:
+            entry["favorite"] = False
+            changed = True
+
+    if changed:
+        save_presets(data)
+
+
 # helper functions
 
 def load_presets() -> dict:
@@ -113,6 +135,9 @@ def save_presets(data: dict) -> None:
     finally:
         if os.path.exists(temp_name):
             os.unlink(temp_name)
+
+
+_migrate_schema()
 
 
 def publish_change(action: str, key: str | None = None) -> None:
@@ -220,6 +245,7 @@ async def save_preset(request):
                 "preview":         existing.get("preview", None),
                 "preview_version": existing.get("preview_version", 0),
                 "pinned":          existing.get("pinned", False),
+                "favorite":        existing.get("favorite", False),
                 "created_at":      existing.get("created_at", utc_now()),
                 "updated_at":      utc_now(),
                 "last_used_at":    existing.get("last_used_at", None),
@@ -287,6 +313,7 @@ async def duplicate_preset(request):
                     shutil.copy2(old_path, PREVIEWS_DIR / new_filename)
                     entry["preview"] = new_filename
             entry["pinned"] = False
+            entry["favorite"] = False
             entry["created_at"] = utc_now()
             entry["updated_at"] = entry["created_at"]
             entry["last_used_at"] = None
@@ -313,6 +340,33 @@ async def pin_preset(request):
             save_presets(presets)
         publish_change("pin", key)
         return web.json_response({"status": "ok", "pinned": pinned})
+    except Exception as e:
+        return web.json_response({"status": "error", "message": str(e)})
+
+
+@routes.post("/preset_loader/favorite")
+async def favorite_preset(request):
+    """
+    POST /preset_loader/favorite
+    Toggles a preset's favorite flag. Favorites keep their place in their
+    category (unlike pinning, which groups everything into one list) — they
+    just sort first within it and get a heart badge.
+
+    Expected request body (JSON):
+    { "key": "Styles/lighting/golden_hour", "favorite": true }
+    """
+    try:
+        body = await request.json()
+        key = body.get("key", "").strip()
+        favorite = bool(body.get("favorite", True))
+        async with _write_lock:
+            presets = load_presets()
+            if key not in presets:
+                return web.json_response({"status": "error", "message": "Preset not found"})
+            presets[key]["favorite"] = favorite
+            save_presets(presets)
+        publish_change("favorite", key)
+        return web.json_response({"status": "ok", "favorite": favorite})
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)})
 
