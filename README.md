@@ -29,8 +29,8 @@ while using comfyui I found my self switching between group of texts either for 
 
 Open `http://localhost:8188/preset_loader/browse` (replace the host and port if
 needed) to manage presets in a full-page interface. The library supports desktop
-and mobile layouts, category browsing, search, pinned and recent presets,
-preview images, rename/move, and live updates to open ComfyUI nodes.
+and mobile layouts, category browsing, search, pinned, favourite and recent
+presets, preview images, rename/move, and live updates to open ComfyUI nodes.
 
 Preset names use `/` as a category separator, for example:
 
