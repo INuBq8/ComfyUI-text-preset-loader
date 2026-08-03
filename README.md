@@ -10,7 +10,7 @@ while using comfyui I found my self switching between group of texts either for 
 - Tree structure for presets to organize them in categories and subcategories
 - search function to quickly find presets by name
 - Responsive browser library at `/preset_loader/browse`
-- Category navigation, breadcrumbs, pinned presets and recent presets
+- Category navigation, breadcrumbs, pinned presets, favourite presets and recent presets
 - Live synchronization between the browser library and canvas nodes
 - Safe atomic JSON updates, rename/move, and save-copy support
 - Responsive preset editor with preview upload and draft protection
@@ -79,8 +79,10 @@ than a permanent address for one specific preset.
   its text has changed.
 - **Save copy** creates a new preset from the current text and preserves the
   selected preset's preview image.
-- Rename/move, pin/unpin, and delete are available from the node's actions menu.
-- Browser edits and pin changes are propagated to open nodes without reloading.
+- Rename/move, pin/unpin, favourite/unfavourite, and delete are available from
+  the node's actions menu.
+- Browser edits, pin changes, and favourite changes are propagated to open
+  nodes without reloading.
 
 ## usage in workflow
 1. connect the output of the Preset Loader Node to the input of a Text concatenate Node.
@@ -94,6 +96,19 @@ than a permanent address for one specific preset.
 
 ### advanced usage to load LoRA using [comfyui_lora_tag_loader](https://github.com/badjeff/comfyui_lora_tag_loader) by badjeff
 ![LoadLoRA-usage_00001_.jpg](workflow/LoadLoRA-usage_00001_.jpg)
+
+## What's new in 2.1.0
+- **Favourite presets** (♥) — mark your most-used presets per category. Unlike
+  pinning, favouriting doesn't pull a preset out into its own list: it stays
+  right where it is in the tree, just sorted first and marked with a heart, so
+  categories stay meaningful while your go-to presets still rise to the top.
+- Pin and favourite are now separate, independent toggles with their own
+  icons — 📌 for pin, ♥ for favourite — available from the node's actions menu
+  and from the browser library (card corner buttons and the editor drawer).
+- Favouriting does not change a preset's `preset_id` number — those stay
+  purely alphabetical, so existing workflows that hardcode an ID are unaffected.
+- Existing `user_presets.json` files are migrated automatically on first load
+  after updating — no manual edits needed, and nothing gets overwritten.
 
 ## Notes
 - tested it a little bit with nodes 2.0 seems to work. but it was designed for classic.
