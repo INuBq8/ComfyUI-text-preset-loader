@@ -560,6 +560,12 @@ function showCategoryDropdown(anchor, presets, currentKey, onSelect, showPreview
             color:#d8dbe3;text-align:left;cursor:pointer;margin-bottom:3px;`;
         const title = document.createElement("div");
         title.style.cssText = "font-size:11px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+        if (preset.favorite) {
+            const heart = document.createElement("span");
+            heart.textContent = "♥";
+            heart.style.cssText = "margin-right:5px;color:#ef88a7;";
+            title.append(heart);
+        }
         // The dotted ID path is exactly what you'd type into the preset_id input.
         const idPath = (preset.id_path || []).join(".");
         if (idPath) {
@@ -568,7 +574,7 @@ function showCategoryDropdown(anchor, presets, currentKey, onSelect, showPreview
             chip.style.cssText = "margin-right:7px;color:#6f7583;font-size:10px;font-variant-numeric:tabular-nums;";
             title.append(chip, document.createTextNode(name));
         } else {
-            title.textContent = name;
+            title.append(document.createTextNode(name));
         }
         const meta = document.createElement("div");
         meta.textContent = parts.join(" / ") || "Uncategorised";
@@ -608,9 +614,13 @@ function showCategoryDropdown(anchor, presets, currentKey, onSelect, showPreview
             (!activeCategory || activeCategory === "@pinned" && presets[key]?.pinned ||
                 activeCategory === "@recent" && presets[key]?.last_used_at || key.startsWith(activeCategory + "/")) &&
             (!query || `${key} ${presets[key]?.text || ""}`.toLocaleLowerCase().includes(query))
-        ).sort((a, b) => activeCategory === "@recent"
-            ? String(presets[b]?.last_used_at || "").localeCompare(String(presets[a]?.last_used_at || ""))
-            : a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }));
+        ).sort((a, b) => {
+            if (activeCategory === "@recent") {
+                return String(presets[b]?.last_used_at || "").localeCompare(String(presets[a]?.last_used_at || ""));
+            }
+            const favDiff = (presets[b]?.favorite ? 1 : 0) - (presets[a]?.favorite ? 1 : 0);
+            return favDiff || a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+        });
         if (!matching.length) {
             const empty = document.createElement("div");
             empty.textContent = "No matching presets";
@@ -986,8 +996,12 @@ app.registerExtension({
                     action.onclick = () => { menu.remove(); handler(); };
                     menu.appendChild(action);
                 };
-                addAction(presets[selectedKey]?.pinned ? "Unpin preset" : "Pin preset", async () => {
+                addAction("📌 " + (presets[selectedKey]?.pinned ? "Unpin preset" : "Pin preset"), async () => {
                     await presetAction("pin", { key: selectedKey, pinned: !presets[selectedKey]?.pinned });
+                    presets = await fetchPresets(); updateLabel();
+                });
+                addAction("♥ " + (presets[selectedKey]?.favorite ? "Unfavourite preset" : "Favourite preset"), async () => {
+                    await presetAction("favorite", { key: selectedKey, favorite: !presets[selectedKey]?.favorite });
                     presets = await fetchPresets(); updateLabel();
                 });
                 addAction("Rename / move…", () => showNamePopup("RENAME OR MOVE PRESET", selectedKey, "Move", async newKey => {
@@ -1174,9 +1188,10 @@ app.registerExtension({
                     ? `<span style="color:${COLOR_PRESET_NAME};">${p}</span>`
                     : `<span style="color:${color};">${p}</span>`
             ).join(`<span style="color:${color};opacity:0.4;margin:0 2px;">/</span>`);
-            const pin = presets[selectedKey]?.pinned ? `<span style="color:#ef88a7;margin-right:5px;">♥</span>` : "";
+            const favorite = presets[selectedKey]?.favorite ? `<span style="color:#ef88a7;margin-right:5px;">♥</span>` : "";
+            const pin = presets[selectedKey]?.pinned ? `<span style="margin-right:5px;">📌</span>` : "";
             const changed = dirty ? `<span title="Unsaved changes" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${COLOR_ACCENT};margin-left:7px;vertical-align:middle;"></span>` : "";
-            label.innerHTML = pin + pathHtml + changed;
+            label.innerHTML = favorite + pin + pathHtml + changed;
         }
 
         // ── THEME CHANGE OBSERVERS ──────────────────────────────────────────
